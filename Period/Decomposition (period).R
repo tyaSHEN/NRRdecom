@@ -4,11 +4,11 @@ library(HMDHFDplus)
 
 ### parameters ###
 # Enter your HFD username and password
-username.hfd = "tianyu.shen@anu.edu.au"
-password.hfd = "JCimOL202#"
+username.hfd = ""
+password.hfd = ""
 # Enter your HMD username and password
-username.hmd = "tianyu.shen@anu.edu.au"
-password.hmd = "JCimOL202#"
+username.hmd = ""
+password.hmd = ""
 ### 
 
 # Names<-c("AUT","BLR","BGR","CAN","CHE","CHL","CZE","DEUTE","DEUTNP","DEUTW",
