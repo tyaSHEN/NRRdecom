@@ -1,5 +1,15 @@
 library(tidyverse)
 library(scales)
+library(HMDHFDplus)
+
+### parameters ###
+# Enter your HFD username and password
+username.hfd = "tianyu.shen@anu.edu.au"
+password.hfd = "JCimOL202#"
+# Enter your HMD username and password
+username.hmd = "tianyu.shen@anu.edu.au"
+password.hmd = "JCimOL202#"
+### 
 
 # Names<-c("AUT","BLR","BGR","CAN","CHE","CHL","CZE","DEUTE","DEUTNP","DEUTW",
 #          "DNK","GBR_NIR","GBR_NP","GBR_SCO","GBRTENW","ESP","EST","FIN",
@@ -7,7 +17,7 @@ library(scales)
 #          "NLD","NOR","POL","PRT","RUS","SVK","SVN",
 #          "KOR","SWE","TWN","UKR","USA")
 # select a country from Names
-Country = "USA"
+Country = "ESP"
 
 yeard = 5
 
@@ -15,14 +25,19 @@ yeard = 5
 # `Births`, ` Deaths_lexis` & `Population` from HMD to be downloaded and stored in the Data folder
 
 # data cleaning ----
-Birth <- read.table("Data/birthsTR.txt", header = TRUE, fill = TRUE, skip = 2) %>% filter(Code == Country) %>% select(-Code)
-Birth[which(Birth$Age == "12-"),"Cohort"] <- Birth[which(Birth$Age == "12-")+1,"Cohort"]
-Birth[which(Birth$Age == "55+"),"Cohort"] <- Birth[which(Birth$Age == "55+")-1,"Cohort"]
-Birth$Age = gsub("[+]", "", Birth$Age)
-Birth$Age = gsub("[-]", "", Birth$Age)
-Birth$Age <- as.numeric(Birth$Age)
+Birth <- readHFDweb(CNTRY = Country, item = "birthsTR", username =
+                      username.hfd, password = password.hfd)%>% select(-OpenInterval)
 
-Tot.birth = read.table(paste0("Data/Births/",Country,".Births.txt"), header = TRUE, fill = TRUE, skip = 1)
+# Birth <- read.table("Data/birthsTR.txt", header = TRUE, fill = TRUE, skip = 2) %>% filter(Code == Country) 
+Birth[which(Birth$Age == 12),"Cohort"] <- Birth[which(Birth$Age == 12)+1,"Cohort"]
+Birth[which(Birth$Age == 55),"Cohort"] <- Birth[which(Birth$Age == 55)-1,"Cohort"]
+# Birth$Age = gsub("[+]", "", Birth$Age)
+# Birth$Age = gsub("[-]", "", Birth$Age)
+# Birth$Age <- as.numeric(Birth$Age)
+
+Tot.birth = readHMDweb(CNTRY = Country, item = "Births", username =
+                   username.hmd, password = password.hmd)
+# Tot.birth = read.table(paste0("Data/Births/",Country,".Births.txt"), header = TRUE, fill = TRUE, skip = 1)
 if(Country == "TWN"){
   Tot.birth = Tot.birth %>% filter(Year >=1949) %>% mutate(Total = as.numeric(as.character(Total)),Female = as.numeric(as.character(Female))) %>%  mutate(F.per = Female/Total)
 }else{Tot.birth = Tot.birth %>% mutate(F.per = Female/Total)}
@@ -36,21 +51,26 @@ Birtht$Cohort <- as.numeric(as.character(Birtht$Cohort))
 Birthf <- Birth %>% group_by(Age,Cohort) %>% summarise(Birthf = sum(Birthf))
 Birthf$Cohort <- as.numeric(as.character(Birthf$Cohort))
 
-Pop <- read.table("Data/exposTR.txt", header = TRUE, fill = TRUE, skip = 2) %>% filter(Code == Country) %>% select(-Code)
+Pop <- readHFDweb(CNTRY = Country, item = "exposTR", username =
+                      username.hfd, password = password.hfd)%>% select(-OpenInterval)
+
+# Pop2 <- read.table("Data/exposTR.txt", header = TRUE, fill = TRUE, skip = 2) %>% filter(Code == Country) %>% select(-Code)
 Pop <- Pop %>% group_by(Age,Cohort) %>% summarise(Exposure = sum(Exposure))
 
 Birth.C <- left_join(Birtht,Birthf)
 Birth.C <- left_join(Birth.C,Pop)
 
-
-Death = read.table(paste0("Data/Deaths_lexis/",Country,".Deaths_lexis.txt"), header = TRUE, fill = TRUE, skip = 1)[,c(1,2,3,4)]
+Death = readHMDweb(CNTRY = Country, item = "Deaths_lexis", username =
+                     username.hmd, password = password.hmd)[,c(1,2,3,4)]
+# Death = read.table(paste0("Data/Deaths_lexis/",Country,".Deaths_lexis.txt"), header = TRUE, fill = TRUE, skip = 1)[,c(1,2,3,4)]
 Death$Age <- as.numeric(as.character(Death$Age))
 Death$Cohort <- as.numeric(as.character(Death$Cohort))
 
-Pop = read.table(paste0("Data/Population/",Country,".Population.txt"), header = TRUE, fill = TRUE, skip = 1)[,c(1,2,3)]
-Pop$Year = gsub("[+]", "", Pop$Year)
-Pop$Age <- as.numeric(as.character(Pop$Age))
-Pop$Year <- as.numeric(as.character(Pop$Year))
+
+Pop = readHMDweb(CNTRY = Country, item = "Population", username =
+                     username.hmd, password = password.hmd)[,c(1,2,4)]
+# Pop2 = read.table(paste0("Data/Population/",Country,".Population.txt"), header = TRUE, fill = TRUE, skip = 1)[,c(1,2,3)]
+colnames(Pop)[3] = "Female"
 Pop$Year <- Pop$Year-1
 Exposure = Death %>% group_by(Year,Age) %>% slice(1) %>% left_join(Pop,by = c("Year", "Age")) %>%ungroup()
 Exposure$Exposure <- Exposure$Female.x+Exposure$Female.y
@@ -90,7 +110,7 @@ ggplot(Sums %>% pivot_longer(c(2,3)))+
   scale_color_manual("",values = c("orange","green4"))+
   theme(panel.background = element_rect("transparent"),legend.position = "bottom",axis.line.x = element_line(),
         panel.grid.major.y = element_line(colour = "grey90",linetype=1),axis.ticks.y =element_blank(),plot.margin = unit(c(0,1,0,0),"cm"))+
-  scale_y_continuous("TFR & NRR",breaks = seq(-16,16,1))+
+  scale_y_continuous("TFR & NRR",breaks = seq(-16,16,1),limits = c(0,NA))+
   ggtitle(Country)
 
 # main decomposition ----
