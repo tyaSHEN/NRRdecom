@@ -1,5 +1,15 @@
 library(tidyverse)
 library(scales)
+library(HMDHFDplus)
+
+### parameters ###
+# Enter your HFD username and password
+username.hfd = "tianyu.shen@anu.edu.au"
+password.hfd = "JCimOL202#"
+# Enter your HMD username and password
+username.hmd = "tianyu.shen@anu.edu.au"
+password.hmd = "JCimOL202#"
+### 
 
 # Names<-c("AUT","BLR","BGR","CAN","CHE","CHL","CZE","DEUTE","DEUTNP","DEUTW",
 #          "DNK","GBR_NIR","GBR_NP","GBR_SCO","GBRTENW","ESP","EST","FIN",
@@ -15,27 +25,34 @@ yeard = 5
 # `Births`, ` Deaths_lexis` & `Population` from HMD to be downloaded and stored in the Data folder
 
 # data cleaning ----
-Birth <- read.table("Data/birthsRR.txt", header = TRUE, fill = TRUE, skip = 2)
-Birth$Age = gsub("[+]", "", Birth$Age)
-Birth$Age = gsub("[-]", "", Birth$Age)
-Birth$Age <- as.numeric(Birth$Age)
-Pop <- read.table("Data/exposRR.txt", header = TRUE, fill = TRUE, skip = 2)
+# Birth <- read.table("Data/birthsRR.txt", header = TRUE, fill = TRUE, skip = 2)
+Birth <- readHFDweb(CNTRY = Country, item = "birthsRR", username =
+                      username.hfd, password = password.hfd)%>% select(-OpenInterval)
+
+Pop <- readHFDweb(CNTRY = Country, item = "exposRR", username =
+                    username.hfd, password = password.hfd)%>% select(-OpenInterval)
+# Pop <- read.table("Data/exposRR.txt", header = TRUE, fill = TRUE, skip = 2)
 Birth <- left_join(Birth,Pop)
 
 
-Tot.birth = read.table(paste0("Data/Births/",Country,".Births.txt"), header = TRUE, fill = TRUE, skip = 1)
+# Tot.birth = read.table(paste0("Data/Births/",Country,".Births.txt"), header = TRUE, fill = TRUE, skip = 1)
+Tot.birth = readHMDweb(CNTRY = Country, item = "Births", username =
+                         username.hmd, password = password.hmd)
 if(Country == "TWN"){
   Tot.birth = Tot.birth %>% filter(Year >=1949) %>%mutate(Total = as.numeric(as.character(Total)),Female = as.numeric(as.character(Female))) %>%  mutate(F.per = Female/Total)
 }else{Tot.birth = Tot.birth %>% mutate(F.per = Female/Total)}
 
-lx = read.table(paste0("Data/fltper_1x1/",Country,".fltper_1x1.txt"), header = TRUE, fill = TRUE, skip = 1)[,c(1,2,6)]
+
+lx = readHMDweb(CNTRY = Country, item = "fltper_1x1", username =
+                         username.hmd, password = password.hmd)[,c(1,2,6)]
+# lx2 = read.table(paste0("Data/fltper_1x1/",Country,".fltper_1x1.txt"), header = TRUE, fill = TRUE, skip = 1)[,c(1,2,6)]
 lx$Age = gsub("[+]", "", lx$Age)
 lx$Age = as.numeric(lx$Age)
 
-Birth.C = Birth %>% filter(Code == Country)
+Birth.C = Birth # %>% filter(Code == Country)
 
 # TFR & NRR
-Birth.C = inner_join(Birth.C[,-1],Tot.birth[,c(1,5)])
+Birth.C = inner_join(Birth.C,Tot.birth[,c(1,5)])
 Birth.C = Birth.C %>% mutate(Female = Total * F.per)
 
 Birth.C = Birth.C %>% mutate(ASFR = Total/Exposure)
@@ -51,7 +68,7 @@ ggplot(Sums %>% pivot_longer(c(2,3)))+
   scale_color_manual("",values = c("orange","green4"))+
   theme(panel.background = element_rect("transparent"),legend.position = "bottom",axis.line.x = element_line(),
         panel.grid.major.y = element_line(colour = "grey90",linetype=1),axis.ticks.y =element_blank(),plot.margin = unit(c(0,1,0,0),"cm"))+
-  scale_y_continuous("TFR & NRR",breaks = seq(-16,16,1))+
+  scale_y_continuous("TFR & NRR",breaks = seq(-16,16,1),limits = c(0,NA))+
   ggtitle(Country)
 
 # main decomposition ----
